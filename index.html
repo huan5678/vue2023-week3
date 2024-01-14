@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite + TS</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
+  </head>
+  <body>
+    <div id="app" class="container p-4 mx-auto space-y-4">
+      <form @submit.prevent="handleLogin()" class="grid items-end grid-cols-2 gap-4 p-4">
+        <div class="space-y-6" v-if="!isLoggedIn">
+          <h2 class="text-2xl text-center">使用者登入</h2>
+          <div>
+            <label class="block" for="username">
+              <span class="text-gray-700">使用者名稱</span>
+              <input type="text" id="username" v-model="userData.username" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="">
+            </label>
+          </div>
+          <div>
+            <label for="password">
+              <span class="text-gray-700">密碼</span>
+              <input type="password" id="password" v-model="userData.password" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" />
+            </label>
+          </div>
+          <div>
+            <button type="submit" class="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:bg-gray-500" :disabled="isLoading">登入</button>
+          </div>
+        </div>
+        <div class="flex items-end justify-between gap-4">
+          <div class="flex-auto space-y-6">
+          <h2>驗證使用者</h2>
+          <button type="button" class="flex w-full justify-center rounded-md bg-pink-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-pink-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50 disabled:bg-gray-500" @click="handleCheck()" :disabled="isLoading">驗證</button>
+        </div>
+        </div>
+      </form>
+
+      <div class="grid grid-cols-2 gap-4" v-if="isLoggedIn === true">
+        <div class="space-y-2">
+          <h2 class="p-2 text-2xl font-bold text-center">產品列表</h2>
+          <table>
+            <thead class="border-b-2 border-black">
+              <tr>
+                <th class="py-2" width="150">產品名稱</th>
+                <th width="120">
+                  原價
+                </th>
+                <th width="120">
+                  售價
+                </th>
+                <th width="150">
+                  是否啟用
+                </th>
+                <th width="120">
+                  查看細節
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-gray-200" v-for="item in productData.products" :key="item.id">
+                <td width="150">{{ item.title }}</td>
+                <td width="120">
+                  {{ item.price }}
+                </td>
+                <td width="120">
+                  {{ item.origin_price }}
+                </td>
+                <td width="150">
+                  <span v-if="item.is_enabled === 1" class="text-success">啟用</span>
+                  <span v-else>未啟用</span>
+                </td>
+                <td class="py-2" width="120">
+                  <button type="button" class="px-4 py-2 text-white transition duration-300 bg-blue-500 rounded hover:bg-blue-600" @click="handleReset(); openProductForm = false;temp = item">查看細節</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p>目前有 <span>{{ Object.keys(productData.products).length }}</span> 項產品</p>
+        </div>
+        <div class="p-4 space-y-2 border border-gray-200 rounded-lg shadow">
+          <h2 class="text-2xl font-bold text-center">單一產品細節</h2>
+          <div class="flex flex-col" v-if="temp.title.length > 0 && !openProductForm">
+            <img :src="temp.imageUrl" class="object-cover object-center w-full rounded aspect-video max-h-80" alt="主圖">
+            <div class="flex flex-col gap-2 py-4">
+              <h5 class="flex items-center gap-4">
+                {{ temp.title }}
+                <span class="px-2 py-1 text-xs text-white bg-blue-500 rounded">{{ temp.category }}</span>
+              </h5>
+              <p>商品描述：{{ temp.description }}</p>
+              <p>商品內容：{{ temp.content }}</p>
+              <div class="flex items-center gap-2">
+                <p>{{ temp.price }}</p>
+                <p class="text-sm"><del>{{ temp.origin_price }}</del></p>
+                元 / {{ temp.unit }}
+              </div>
+            </div>
+            <div class="flex gap-2 overflow-x-scroll">
+              <img :src="img" class="object-cover object-center rounded max-h-48" alt="" v-for="img in temp.imagesUrl">
+            </div>
+            <div class="flex justify-between gap-4 py-4">
+              <div class="flex-auto">
+                <button type="button" class="w-full px-4 py-2 text-white transition duration-300 bg-red-500 rounded hover:bg-red-600" @click="handleDeleteProduct(temp.id)">刪除產品</button>
+              </div>
+              </div>
+          </div>
+          <form v-else-if="openProductForm" class="p-4 border rounded">
+        <div class="flex flex-col gap-4">
+          <h2 class="text-2xl font-bold text-center">{{formStatus === 'new' ? '新增產品' : '編輯產品'}}</h2>
+          <div class="flex justify-between gap-4">
+            <div class="flex flex-col flex-auto gap-2">
+              <label for="title" class="text-lg font-medium">產品名稱</label>
+              <input type="text" id="title" v-model="temp.title" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50" placeholder="請輸入產品名稱">
+            </div>
+            <div class="flex flex-col flex-auto gap-2">
+              <label for="category" class="text-lg font-medium">產品分類</label>
+              <input type="text" id="category" v-model="temp.category" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50" placeholder="請輸入產品分類">
+            </div>
+            <div class="flex flex-col flex-auto gap-2">
+              <label for="unit" class="text-lg font-medium">產品單位</label>
+              <input type="text" id="unit" v-model="temp.unit" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50" placeholder="請輸入產品單位">
+            </div>
+          </div>
+          <div class="flex justify-between gap-4">
+            <div class="flex flex-col flex-auto gap-2">
+              <label for="origin_price" class="text-lg font-medium">產品原價</label>
+              <input type="text" id="origin_price" v-model.number="temp.origin_price" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50" placeholder="請輸入產品原價" pattern="[0-9]+">
+            </div>
+            <div class="flex flex-col flex-auto gap-2">
+              <label for="price" class="text-lg font-medium">產品售價</label>
+              <input type="text" id="price" v-model.number="temp.price" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50" placeholder="請輸入產品售價" pattern="[0-9]+">
+            </div>
+          </div>
+          <div class="flex justify-between gap-4">
+
+            <div class="flex flex-col flex-auto gap-2">
+              <label for="description" class="text-lg font-medium">產品描述</label>
+              <textarea type="text" id="description" v-model="temp.description" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50" placeholder="請輸入產品描述">
+              </textarea>
+            </div>
+            <div class="flex flex-col flex-auto gap-2">
+              <label for="content" class="text-lg font-medium">產品內容</label>
+              <textarea type="text" id="content" v-model="temp.content" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50" placeholder="請輸入產品內容">
+              </textarea>
+            </div>
+          </div>
+          <div class="flex justify-between gap-4">
+            <div class="flex flex-col flex-auto gap-2">
+              <label for="imageUrl" class="text-lg font-medium">產品主圖</label>
+              <input type="text" id="imageUrl" v-model="temp.imageUrl" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50" placeholder="請輸入產品主圖" pattern="^(http).*\.(png|jpg|jpeg|webp)$">
+              <img v-if="temp.imageUrl" :src="temp.imageUrl" class="object-cover object-center w-full rounded aspect-video max-h-80" alt="主圖">
+            </div>
+            <div class="flex flex-col w-1/2 gap-2">
+              <label for="imagesUrl" class="text-lg font-medium">產品圖片</label>
+              <input type="text" id="imagesUrl" v-model="temp.imageTemp" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50" placeholder="請輸入產品圖片" pattern="^(http).*\.(png|jpg|jpeg|webp)$">
+              <div class="flex flex-wrap gap-4 p-4 overflow-x-scroll">
+                <div class="relative flex-auto max-w-md max-h-48" v-for="(img, idx) in temp.imagesUrl" :key="img + idx">
+                  <img :src="img" class="object-cover object-center w-full h-full rounded" alt="" @click="temp.imageTemp = img">
+                  <button type="button" class="absolute top-0 grid w-5 h-5 p-4 text-white transition duration-300 -translate-x-4 -translate-y-4 bg-gray-600 border rounded hover:bg-gray-400 border-gray-950/75 left-full place-content-center" @click="temp.imagesUrl.splice(idx, 1)">❌</button>
+                </div>
+              </div>
+              <button type="button" class="px-4 py-2 text-white transition duration-300 bg-blue-500 rounded hover:bg-blue-600" @click="handleAddProductImage(temp.imageTemp)">新增圖片</button>
+            </div>
+          </div>
+          <div class="flex justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <label for="is_enabled" class="text-lg font-medium">是否啟用</label>
+              <input type="checkbox" id="is_enabled" v-model="temp.is_enabled" true-value="1"
+  false-value="0" class="border border-gray-300 rounded focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50">
+            </div>
+            <div class="flex flex-col w-1/2 gap-2">
+              <button type="button" class="px-4 py-2 text-white transition duration-300 rounded bg-amber-500 hover:bg-amber-600" @click="formStatus === 'new' ? handleAddProduct() : handleUpdateProduct()">{{formStatus === 'new' ? '新增產品' : '更新產品'}}</button>
+            </div>
+          </div>
+        </div>
+      </form>
+          <p v-else class="text-lg">請選擇一個商品查看</p>
+          <div class="flex-auto space-y-6">
+            <button type="button" v-if="temp.title" class="flex w-full justify-center rounded-md bg-cyan-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-cyan-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 disabled:opacity-50 disabled:bg-gray-500" @click="openProductForm = !openProductForm; formStatus === 'new' ? handleEditProduct(temp) : formStatus = 'new';">{{!openProductForm ? '編輯產品' : '取消編輯'}}</button>
+            <button type="button" v-if="formStatus === 'new'" class="flex w-full justify-center rounded-md bg-cyan-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-cyan-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 disabled:opacity-50 disabled:bg-gray-500" @click="openProductForm = !openProductForm; formStatus = 'new';handleReset()">{{!openProductForm ? '新增產品' : '取消新增'}}</button>
+          </div>
+        </div>
+      </div>
+      <div v-if="showMessage" class="fixed flex items-center justify-between w-full max-w-xs p-4 space-x-4 text-gray-500 bg-white divide-x divide-gray-200 rounded-lg shadow rtl:divide-x-reverse right-5 top-5 dark:text-gray-400 dark:divide-gray-700 space-x dark:bg-gray-800" role="alert">
+    <div class="text-sm font-normal ms-3">{{message}}</div>
+    <button type="button" @click="handleShowMessage(false)" class="ms-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8 dark:text-gray-500 dark:hover:text-white dark:bg-gray-800 dark:hover:bg-gray-700" aria-label="Close">
+        <span class="sr-only">Close</span>
+        <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+        </svg>
+    </button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
